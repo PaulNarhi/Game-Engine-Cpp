@@ -1,5 +1,7 @@
 #include "VertexArray.h"
 #include "Renderer.h"
+#include "VertexBufferLayout.h"
+//#include <iostream>
 
 VertexArray::VertexArray()
 {
@@ -27,13 +29,14 @@ void VertexArray::AddBuffer(const VertexBuffer& vb, const VertexBufferLayout& la
 	Bind();
 	vb.Bind();
 	const auto& elements = layout.GetElements();
+	unsigned int offset = 0;
 	for (unsigned int i = 0; i < elements.size(); i++) 
 	{
-		unsigned int offset = 0;
+		//std::cout << i << std::endl;
 		const auto& element = elements[i];
 		/*tells openGL how data in vertex buffer is structured*/
 		GLCall(glEnableVertexAttribArray(i));
-		GLCall(glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.GetStrinde(), (const void*)offset));
+		GLCall(glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.GetStride(), (const void*)offset));
 		offset += element.count * VertexBufferElement::GetSizeOfType(element.type);
 	}
 	

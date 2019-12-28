@@ -1,108 +1,21 @@
+#define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
+
 
 #include "Renderer.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "VertexArray.h"
+#include "Shader.h"
+#include "VertexBufferLayout.h"
+#include "Texture.h"
 
-struct ShaderProgramSource
-{
-	std::string Vertex;
-	std::string Fragment;
-};
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
-/* read file from resources and parse vertex and fragment shaders to different strings
-   returns a struct containing two strings as sources */
-static ShaderProgramSource ParseShader(const std::string& filepath)
-{
-	std::ifstream stream(filepath);
-
-	enum class ShaderType
-	{
-		NONE = -1, VERTEX = 0, FRAGMENT = 1
-	};
-
-	std::string line;
-	std::stringstream ss[2];
-	ShaderType type = ShaderType::NONE;
-
-	while (getline(stream, line))
-	{
-		if (line.find("#shader") != std::string::npos)
-		{
-			if (line.find("vertex") != std::string::npos)
-			{
-				type = ShaderType::VERTEX;
-			}
-			else if (line.find("fragment") != std::string::npos)
-			{
-				type = ShaderType::FRAGMENT;
-			}
-		}
-		else
-		{
-			ss[(int)type] << line << '\n';
-		}
-	}
-	return { ss[0].str(), ss[1].str() };
-}
-
-/* helper function to compile shader source code of specified type*/
-static unsigned int CompileShader(const std::string& source, unsigned int type)
-{
-	GLCall(unsigned int id = glCreateShader(type));
-	const char* src = source.c_str();
-	GLCall(glShaderSource(id, 1, &src, nullptr));
-	GLCall(glCompileShader(id));
-
-	//error handling
-	int result;
-	GLCall(glGetShaderiv(id, GL_COMPILE_STATUS, &result));
-	if (!result)
-	{
-		int length;
-		GLCall(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
-		char* message = (char*)alloca(length * sizeof(char));
-		GLCall(glGetShaderInfoLog(id, length, &length, message));
-		std::cout << "Failed to compile" <<
-			(type == GL_VERTEX_SHADER ? "vertex" : "fragment") << " shader!" << std::endl;
-		std::cout << message << std::endl;
-		GLCall(glDeleteShader(id));
-		return 0;
-	}
-
-	return id;
-}
-
-
-/* creates an empty program object and attaches vertex and fragment shader programs to it*/
-static unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader) 
-{
-	GLCall(unsigned int program = glCreateProgram());
-
-	if (!program) {
-		std::cout << "Error!" << std::endl;
-	}
-
-	unsigned int vs = CompileShader(vertexShader, GL_VERTEX_SHADER);
-	unsigned int fs = CompileShader(fragmentShader, GL_FRAGMENT_SHADER);
-
-	GLCall(glAttachShader(program, vs));
-	GLCall(glAttachShader(program, fs));
-	GLCall(glLinkProgram(program));
-	GLCall(glValidateProgram(program));
-
-	GLCall(glDeleteShader(vs));
-	GLCall(glDeleteShader(fs));
-
-	return program;
-}
 
 int main(void)
 {
@@ -117,7 +30,7 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+	window = glfwCreateWindow(1024, 576, "Game Engine", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -132,19 +45,18 @@ int main(void)
 
 	/* Initialize GLEW and check ok*/
 	if (glewInit() != GLEW_OK) {
-		std::cout << "Error!" << std::endl;
+		std::cout << " GLEW Error!" << std::endl;
 	}
 
 	/* Print openGL and driver version*/
 	std::cout << glGetString(GL_VERSION) << std::endl;
 	{
 		/* Data for vertex buffer*/
-		float positions[12] = {
-			-0.25f, -0.25f,
-			 0.25f, -0.25f,
-			-0.25f,  0.25f,
-			 0.25f,  0.25f,
-
+		float positions[20] = {
+			-0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
+			 0.5f, -0.5f, -1.0f, 1.0f, 0.0f,
+			-0.5f,  0.5f, -1.0f, 0.0f, 1.0f,
+			 0.5f,  0.5f, -1.0f, 1.0f, 1.0f
 		};
 
 		unsigned int indices[6] = {
@@ -152,51 +64,64 @@ int main(void)
 			1, 2, 3
 		};
 
-		unsigned int vao; //vertex array object
-		GLCall(glGenVertexArrays(1, &vao));
-		GLCall(glBindVertexArray(vao));
+		GLCall(glEnable(GL_BLEND));
+		GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
 		VertexArray va;
-		VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+		VertexBuffer vb(positions, 4 * 5 * sizeof(float));
 		VertexBufferLayout layout;
-		layout.Push<float>(2);
+		layout.Push<float>(3);  //add mesh coordinates to vertex array
+		layout.Push<float>(2);  //add texture coordinates to vertex array
 		va.AddBuffer(vb, layout);
 
 		/* Create an index buffer*/
 		IndexBuffer ib(indices, 6);
 
+		//glm::mat4 projMat = glm::ortho(-2.0f, 2.0f, -1.125f, 1.125f, -1.0f, 1.0f);
+		glm::mat4 projMat = glm::perspective(45.0f, 16.0f/9.0f, 1.0f, 150.0f);
 
-		ShaderProgramSource sources = ParseShader("resources/shaders/Basic.shader");
+		Shader shader = Shader("resources/shaders/Basic.shader");
+		shader.Bind();
+		//shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.9f, 1.0f);
+		shader.SetUniformMat4f("u_MVP", projMat);
 
-		/* call createShader function on source code from resources folder and use it in program*/
-		unsigned int shader = CreateShader(sources.Vertex, sources.Fragment);
-		GLCall(glUseProgram(shader));
+		Texture texture = Texture("resources/textures/grass/grass_side_small.png");
+		texture.Bind(); //Bind to slot 0 (modern machines have around 32 slots)
+		shader.SetUniform1i("u_Texture", 0);
+		
+		//unbind all buffers
+		va.Unbind();
+		shader.Unbind();
+		vb.Unbind();
+		ib.Unbind();
 
-		GLCall(int location = glGetUniformLocation(shader, "u_Color"));
-		ASSERT(location != -1);
-		GLCall(glUniform4f(location, 0.2f, 0.3f, 0.9f, 1.0f));
-
-		GLCall(glBindVertexArray(0));
-		GLCall(glUseProgram(0));
-		GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
-		GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+		Renderer renderer;
 
 		float r = 0.0;
 		float interval = 0.05;
 
+		double lastTime = glfwGetTime();
+		int nofFrames = 0;
+
 		/* Loop until the user closes the window */
 		while (!glfwWindowShouldClose(window))
 		{
+			/* FPS counter*/
+			double currentTime = glfwGetTime();
+			nofFrames++;
+			if (currentTime - lastTime >= 1.0)
+			{
+				std::cout << "FPS: " << 1 / ((1000.0 / double(nofFrames)) / 1000.0) << " ms/Frame: " << 1000.0/float(nofFrames) << std::endl;
+				nofFrames = 0;
+				lastTime += 1.0;
+			}
+
 			/* Render here */
-			GLCall(glClear(GL_COLOR_BUFFER_BIT));
-
-			GLCall(glUseProgram(shader));
-			GLCall(glUniform4f(location, r, 0.3f, 0.9f, 1.0f));
-
-			va.Bind();
-			ib.Bind();
-
-			GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+			renderer.Clear();
+			shader.Bind();
+			//shader.SetUniform4f("u_Color", r, 0.3f, 0.9f, 1.0f);
+			
+			renderer.Draw(va, ib, shader);
 
 			if (r > 1.0f)
 				interval = -0.05f;
@@ -205,15 +130,12 @@ int main(void)
 
 			r += interval;
 
-
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
 
 			/* Poll for and process events */
 			glfwPollEvents();
 		}
-
-		GLCall(glDeleteProgram(shader));
 	}
 	glfwTerminate();
 	return 0;
