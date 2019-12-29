@@ -12,9 +12,11 @@
 #include "Shader.h"
 #include "VertexBufferLayout.h"
 #include "Texture.h"
+#include "EventHandler.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
 
 
 int main(void)
@@ -53,10 +55,10 @@ int main(void)
 	{
 		/* Data for vertex buffer*/
 		float positions[20] = {
-			-0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-			 0.5f, -0.5f, -1.0f, 1.0f, 0.0f,
-			-0.5f,  0.5f, -1.0f, 0.0f, 1.0f,
-			 0.5f,  0.5f, -1.0f, 1.0f, 1.0f
+			-0.5f, -0.5f, -5.0f, 0.0f, 0.0f,
+			 0.5f, -0.5f, -5.0f, 1.0f, 0.0f,
+			-0.5f,  0.5f, -5.0f, 0.0f, 1.0f,
+			 0.5f,  0.5f, -5.0f, 1.0f, 1.0f
 		};
 
 		unsigned int indices[6] = {
@@ -78,12 +80,12 @@ int main(void)
 		IndexBuffer ib(indices, 6);
 
 		//glm::mat4 projMat = glm::ortho(-2.0f, 2.0f, -1.125f, 1.125f, -1.0f, 1.0f);
-		glm::mat4 projMat = glm::perspective(45.0f, 16.0f/9.0f, 1.0f, 150.0f);
+		///glm::mat4 projMat = glm::perspective(45.0f, 16.0f/9.0f, 1.0f, 150.0f);
 
 		Shader shader = Shader("resources/shaders/Basic.shader");
 		shader.Bind();
 		//shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.9f, 1.0f);
-		shader.SetUniformMat4f("u_MVP", projMat);
+		///shader.SetUniformMat4f("u_MVP", projMat);
 
 		Texture texture = Texture("resources/textures/grass/grass_side_small.png");
 		texture.Bind(); //Bind to slot 0 (modern machines have around 32 slots)
@@ -95,16 +97,23 @@ int main(void)
 		vb.Unbind();
 		ib.Unbind();
 
+		//create a new renderer
 		Renderer renderer;
 
-		float r = 0.0;
-		float interval = 0.05;
 
+		
+
+		EventHandler eventHandler(window);
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+
+		//FPS
 		double lastTime = glfwGetTime();
 		int nofFrames = 0;
 
 		/* Loop until the user closes the window */
-		while (!glfwWindowShouldClose(window))
+		while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
+			glfwWindowShouldClose(window) == 0)
 		{
 			/* FPS counter*/
 			double currentTime = glfwGetTime();
@@ -115,20 +124,26 @@ int main(void)
 				nofFrames = 0;
 				lastTime += 1.0;
 			}
+			
+			
+			/* Event handling system for basic movements*/
+			eventHandler.GetDeltaTime(lastTime);
+			eventHandler.updateFromInputs();
 
+			
+			eventHandler.updateFromInputs();
+			glm::mat4 ProjectionMatrix = eventHandler.getProjectionMatrix();
+			glm::mat4 ViewMatrix = eventHandler.getViewMatrix();
+			glm::mat4 ModelMatrix = glm::mat4(1.0);
+			glm::mat4 MVP = ProjectionMatrix * ViewMatrix * ModelMatrix;
+			
+			
 			/* Render here */
 			renderer.Clear();
 			shader.Bind();
-			//shader.SetUniform4f("u_Color", r, 0.3f, 0.9f, 1.0f);
-			
+
+			shader.SetUniformMat4f("u_MVP", MVP);
 			renderer.Draw(va, ib, shader);
-
-			if (r > 1.0f)
-				interval = -0.05f;
-			else if (r < 0.0f)
-				interval = 0.05f;
-
-			r += interval;
 
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
