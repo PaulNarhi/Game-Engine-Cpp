@@ -53,31 +53,65 @@ int main(void)
 	/* Print openGL and driver version*/
 	std::cout << glGetString(GL_VERSION) << std::endl;
 	{
+		float cx = 1.0f;
+		float cy = 1.0f;
+		float cz = 1.0f;
 		/* Data for vertex buffer*/
-		float positions[20] = {
-			-0.5f, -0.5f, -5.0f, 0.0f, 0.0f,
-			 0.5f, -0.5f, -5.0f, 1.0f, 0.0f,
-			-0.5f,  0.5f, -5.0f, 0.0f, 1.0f,
-			 0.5f,  0.5f, -5.0f, 1.0f, 1.0f
+		float positions[] = {
+			 // Side faces
+			-0.5f+cx, -0.5f+cy, -5.0f+cz, 0.0f, 0.0f, //0
+			 0.5f+cx, -0.5f+cy, -5.0f+cz, 0.5f, 0.0f, //1
+			-0.5f+cx,  0.5f+cy, -5.0f+cz, 0.0f, 0.5f, //2
+			 0.5f+cx,  0.5f+cy, -5.0f+cz, 0.5f, 0.5f, //3
+		    -0.5f+cx, -0.5f+cy, -6.0f+cz, 0.5f, 0.0f, //4
+			-0.5f+cx,  0.5f+cy, -6.0f+cz, 0.5f, 0.5f, //5
+			 0.5f+cx, -0.5f+cy, -6.0f+cz, 0.0f, 0.0f, //6
+			 0.5f+cx,  0.5f+cy, -6.0f+cz, 0.0f, 0.5f,  //7
+
+
+			// Top face
+			-0.5f+cx,  0.5f+cy, -5.0f+cz, 0.5f, 0.5f, //8
+			 0.5f+cx,  0.5f+cy, -5.0f+cz, 1.0f, 0.5f, //9
+			-0.5f+cx,  0.5f+cy, -6.0f+cz, 0.5f, 1.0f, //10
+			 0.5f+cx,  0.5f+cy, -6.0f+cz, 1.0f, 1.0f, //11
+
+			 // Bottom face
+			-0.5f+cx,  -0.5f+cy, -5.0f+cz, 0.0f, 0.5f, //12
+			 0.5f+cx,  -0.5f+cy, -5.0f+cz, 0.5f, 0.5f, //13
+			-0.5f+cx,  -0.5f+cy, -6.0f+cz, 0.0f, 1.0f, //14
+			 0.5f+cx,  -0.5f+cy, -6.0f+cz, 0.5f, 1.0f, //15
 		};
 
-		unsigned int indices[6] = {
-			0, 1, 2,
-			1, 2, 3
+		unsigned int indices[36] = {
+			//sides
+			0,   1,  2,
+			1,   3,  2,
+			0,   5,  4,
+			0,   2,  5,
+			1,   6,  3,
+			7,   3,  6,
+			4,   5,  6,
+			6,   5,  7,
+			8,   9, 10,
+			10,  9, 11,
+			13, 12, 14,
+			13, 14, 15
+
+			
 		};
 
 		GLCall(glEnable(GL_BLEND));
 		GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
 		VertexArray va;
-		VertexBuffer vb(positions, 4 * 5 * sizeof(float));
+		VertexBuffer vb(positions, 16 * 5 * sizeof(float));
 		VertexBufferLayout layout;
 		layout.Push<float>(3);  //add mesh coordinates to vertex array
 		layout.Push<float>(2);  //add texture coordinates to vertex array
 		va.AddBuffer(vb, layout);
 
 		/* Create an index buffer*/
-		IndexBuffer ib(indices, 6);
+		IndexBuffer ib(indices, 36);
 
 		//glm::mat4 projMat = glm::ortho(-2.0f, 2.0f, -1.125f, 1.125f, -1.0f, 1.0f);
 		///glm::mat4 projMat = glm::perspective(45.0f, 16.0f/9.0f, 1.0f, 150.0f);
@@ -87,7 +121,7 @@ int main(void)
 		//shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.9f, 1.0f);
 		///shader.SetUniformMat4f("u_MVP", projMat);
 
-		Texture texture = Texture("resources/textures/grass/grass_side_small.png");
+		Texture texture = Texture("resources/textures/grass/grass.png");
 		texture.Bind(); //Bind to slot 0 (modern machines have around 32 slots)
 		shader.SetUniform1i("u_Texture", 0);
 		

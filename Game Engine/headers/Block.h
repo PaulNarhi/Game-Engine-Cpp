@@ -1,4 +1,7 @@
 #pragma once
+#include <vector>
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 
 enum class BlockType
@@ -8,14 +11,9 @@ enum class BlockType
 	WOOD  = 3
 };
 
-struct Triangle //this needs to be done so that vertex is x,y,z (vec3d) triangle is ved3d points[3] and mesh is vector<triangle>
+struct Vertex
 {
-	float x, y, z;
-};
-
-struct mesh
-{
-	Triangle* Triangles;
+	float x, y, z, u, v;     //x,y,z are pos u, v are texture pos
 };
 
 
@@ -23,12 +21,10 @@ class Block
 {
 private:
 	BlockType m_Type;
-	mesh m_Coords;
 public:
 	Block();
 	~Block();
 
 
 	BlockType GetType();
-	mesh GetCoords();
 };

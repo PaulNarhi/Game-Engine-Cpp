@@ -20,11 +20,15 @@ bool GLLogCall(const char* function, const char* file, int line)
 void Renderer::Clear() const
 {
 	GLCall(glClearColor(0.3, 0.8, 1.0, 1.0))
-	GLCall(glClear(GL_COLOR_BUFFER_BIT));
+	GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
 void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const
 {
+	GLCall(glEnable(GL_CULL_FACE));
+	GLCall(glEnable(GL_DEPTH_TEST));
+	// Accept fragment if it closer to the camera than the former one
+	GLCall(glDepthFunc(GL_LESS));
 	shader.Bind();
 	va.Bind();
 	ib.Bind();

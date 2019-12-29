@@ -55,7 +55,7 @@ void EventHandler::updateFromInputs()
 
 glm::mat4 EventHandler::getProjectionMatrix()
 {
-	return { glm::perspective(glm::radians(m_InitialFoV), 16.0f / 9.0f, 0.1f, 100.0f) };
+	return { glm::perspective(glm::radians(m_InitialFoV), 16.0f / 9.0f, 0.1f, 1000.0f) };
 }
 
 glm::mat4 EventHandler::getViewMatrix()

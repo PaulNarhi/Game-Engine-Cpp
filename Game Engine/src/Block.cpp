@@ -13,7 +13,3 @@ BlockType Block::GetType()
 	return BlockType();
 }
 
-mesh Block::GetCoords()
-{
-	return mesh();
-}
